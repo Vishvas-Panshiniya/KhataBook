@@ -1,0 +1,256 @@
+<%- include('partials/header') %>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Loans List</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLoanModal">
+            + Add Loan
+        </button>
+    </div>
+
+    <!-- Add Loan Modal -->
+    <div class="modal fade" id="addLoanModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Loan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addLoanForm">
+                        <div class="mb-3">
+                            <label class="form-label">Loan Name</label>
+                            <input type="text" class="form-control" name="loanName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" name="loanType" id="loanTypeSelect">
+                                <option value="normal">Normal Loan (No Interest)</option>
+                                <option value="interest">Interest Loan</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Principal Amount (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="principalAmount"
+                                required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-2">Save Loan</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Loan Modal -->
+    <div class="modal fade" id="editLoanModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Loan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editLoanForm">
+                        <input type="hidden" name="id" id="editLoanId">
+                        <div class="mb-3">
+                            <label class="form-label">Loan Name</label>
+                            <input type="text" class="form-control" name="loanName" id="editLoanName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" name="loanType" id="editLoanType">
+                                <option value="normal">Normal Loan (No Interest)</option>
+                                <option value="interest">Interest Loan</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Principal Amount (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="principalAmount"
+                                id="editLoanPrincipal" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-2">Update Loan</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-4">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Loan Name</th>
+                        <th>Total</th>
+                        <th>Remaining</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="loansTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3" id="paginationControls"
+            style="display: none !important;">
+            <button class="btn btn-sm btn-outline-secondary" id="prevBtn" onclick="changePage(-1)"
+                disabled>Previous</button>
+            <span class="text-muted small" id="pageInfo">Page 1</span>
+            <button class="btn btn-sm btn-outline-secondary" id="nextBtn" onclick="changePage(1)" disabled>Next</button>
+        </div>
+    </div>
+
+    <script>
+        // Removed interestSection visibility toggle
+
+        let currentPage = 1;
+        let totalPages = 1;
+        const limit = 10;
+
+        async function loadLoans(page = 1) {
+            try {
+                const res = await fetch(`/api/loans?limit=${limit}&page=${page}`);
+                const data = await res.json();
+                const tbody = document.getElementById('loansTableBody');
+
+                currentPage = data.currentPage || 1;
+                totalPages = data.totalPages || 1;
+
+                if (data.loans && data.loans.length > 0) {
+                    let html = '';
+                    data.loans.forEach(loan => {
+                        let badgeClass = loan.status === 'active' ? 'badge-active' : 'badge-completed';
+                        html += `<tr>
+                    <td data-label="Loan Name" class="text-start"><strong>${loan.loanName}</strong><br><small class="text-muted">${loan.loanType}</small></td>
+                    <td data-label="Total">₹${loan.totalAmount}</td>
+                    <td data-label="Remaining" class="fw-bold">₹${loan.remainingAmount}</td>
+                    <td data-label="Status"><span class="badge ${badgeClass}">${loan.status.toUpperCase()}</span></td>
+                    <td data-label="Actions">
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a href="/emis?loanId=${loan.id}" class="btn btn-sm btn-outline-primary">Payments</a>
+                            <button class="btn btn-sm btn-outline-secondary" onclick='openEditModal(${JSON.stringify(loan).replace(/'/g, "&#39;")})'>Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteLoan(${loan.id})">Delete</button>
+                        </div>
+                    </td>
+                </tr>`;
+                    });
+                    tbody.innerHTML = html;
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No loans found</td></tr>';
+                }
+
+                updatePaginationControls();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function updatePaginationControls() {
+            const paginationContainer = document.getElementById('paginationControls');
+            paginationContainer.style.display = 'flex';
+            paginationContainer.style.setProperty('display', 'flex', 'important');
+
+            document.getElementById('pageInfo').innerText = `Page ${currentPage} of ${totalPages || 1}`;
+            document.getElementById('prevBtn').disabled = currentPage <= 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+        }
+
+        function changePage(direction) {
+            const newPage = currentPage + direction;
+            if (newPage >= 1 && newPage <= totalPages) {
+                loadLoans(newPage);
+            }
+        }
+
+        document.getElementById('addLoanForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const res = await fetch('/api/loans', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addLoanModal'));
+                    modal.hide();
+                    e.target.reset();
+                    showToast('Loan added successfully', 'success');
+                    loadLoans();
+                } else {
+                    const result = await res.json();
+                    let msg = result.error || 'Failed to add loan';
+                    if (result.errors) msg = result.errors.map(err => Object.values(err)[0]).join(', ');
+                    showToast(msg, 'error');
+                }
+            } catch (err) {
+                showToast('Failed to add loan due to a network error', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        async function deleteLoan(id) {
+            if (!confirm('Are you sure you want to delete this loan? It will delete all EMIs.')) return;
+            try {
+                const res = await fetch(`/api/loans/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('Loan deleted', 'success');
+                    loadLoans();
+                } else {
+                    const result = await res.json();
+                    showToast(result.error || 'Failed to delete loan', 'error');
+                }
+            } catch (err) {
+                showToast(err.message || 'Error deleting loan', 'error');
+            }
+        }
+
+        function openEditModal(loan) {
+            document.getElementById('editLoanId').value = loan.id;
+            document.getElementById('editLoanName').value = loan.loanName;
+            document.getElementById('editLoanType').value = loan.loanType;
+            document.getElementById('editLoanPrincipal').value = loan.principalAmount;
+            const modal = new bootstrap.Modal(document.getElementById('editLoanModal'));
+            modal.show();
+        }
+
+        document.getElementById('editLoanForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            const id = data.id;
+
+            try {
+                const res = await fetch(`/api/loans/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editLoanModal'));
+                    modal.hide();
+                    showToast('Loan updated successfully', 'success');
+                    loadLoans();
+                } else {
+                    const result = await res.json();
+                    showToast(result.error || 'Failed to update loan', 'error');
+                }
+            } catch (err) {
+                showToast('Network error updating loan', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        loadLoans();
+    </script>
+    <%- include('partials/footer') %>

@@ -1,0 +1,311 @@
+<%- include('partials/header') %>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>EMI Payments</h2>
+        <div>
+            <a href="/loans" class="btn btn-outline-secondary me-2">Back to Loans</a>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmiModal" id="addEmiBtn">
+                + Add EMI
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-4 bg-light align-items-center flex-row justify-content-between">
+                <div>
+                    <h5 class="mb-0 text-muted">Loan Details</h5>
+                    <h3 class="mb-0" id="loanNameDisplay">Loading...</h3>
+                </div>
+                <div class="text-end">
+                    <p class="mb-0 text-muted">Remaining Balance</p>
+                    <h3 class="mb-0 text-danger" id="loanRemainingDisplay">₹0</h3>
+                    <span class="badge bg-secondary mt-1" id="loanStatusDisplay">UNKNOWN</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add EMI Modal -->
+    <div class="modal fade" id="addEmiModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Record EMI Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addEmiForm">
+                        <input type="hidden" name="loanId" value="<%= loanId %>">
+                        <div class="mb-3">
+                            <label class="form-label">Payment Date</label>
+                            <input type="date" class="form-control" name="paymentDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">EMI Amount (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="emiAmount" required>
+                        </div>
+                        <div class="mb-3" id="addEmiInterestSection">
+                            <label class="form-label text-danger">Interest Amount (Manual Setup in ₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="interestAmount"
+                                value="0">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-2">Submit Payment</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit EMI Modal -->
+    <div class="modal fade" id="editEmiModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit EMI Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editEmiForm">
+                        <input type="hidden" name="id" id="editEmiId">
+                        <div class="mb-3">
+                            <label class="form-label">Payment Date</label>
+                            <input type="date" class="form-control" name="paymentDate" id="editEmiDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">EMI Amount (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="emiAmount"
+                                id="editEmiAmount" required>
+                        </div>
+                        <div class="mb-3" id="editEmiInterestSection">
+                            <label class="form-label text-danger">Interest Amount (Manual Setup in ₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="interestAmount"
+                                id="editEmiInterest">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" id="editEmiNotes"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-2">Update Payment</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-4">
+        <h4 class="mb-3">Payment History</h4>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Payment Date</th>
+                        <th>Principal Paid</th>
+                        <th>Interest Added</th>
+                        <th>Total EMI Paid</th>
+                        <th>Notes</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="emisTableBody">
+                    <tr>
+                        <td colspan="3" class="text-center">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3" id="paginationControls"
+            style="display: none !important;">
+            <button class="btn btn-sm btn-outline-secondary" id="prevBtn" onclick="changePage(-1)"
+                disabled>Previous</button>
+            <span class="text-muted small" id="pageInfo">Page 1</span>
+            <button class="btn btn-sm btn-outline-secondary" id="nextBtn" onclick="changePage(1)" disabled>Next</button>
+        </div>
+    </div>
+
+    <script>
+        const loanId = "<%= loanId %>";
+        document.querySelector('input[name="paymentDate"]').valueAsDate = new Date();
+
+        let currentPage = 1;
+        let totalPages = 1;
+        const limit = 10;
+
+        async function loadData(page = 1) {
+            try {
+                // Load loan details
+                const loansRes = await fetch('/api/loans?limit=100');
+                const loansData = await loansRes.json();
+                const loan = loansData.loans.find(l => l.id.toString() === loanId);
+
+                if (loan) {
+                    document.getElementById('loanNameDisplay').innerText = loan.loanName;
+                    document.getElementById('loanRemainingDisplay').innerText = `₹${loan.remainingAmount}`;
+                    document.getElementById('loanStatusDisplay').innerText = loan.status.toUpperCase();
+
+                    if (loan.status === 'completed') {
+                        document.getElementById('addEmiBtn').style.display = 'none';
+                        document.getElementById('loanStatusDisplay').classList.replace('bg-secondary', 'bg-success');
+                    } else {
+                        document.getElementById('loanStatusDisplay').classList.replace('bg-secondary', 'bg-primary');
+                    }
+
+                    if (loan.loanType === 'normal') {
+                        document.getElementById('addEmiInterestSection').style.display = 'none';
+                        document.getElementById('editEmiInterestSection').style.display = 'none';
+                    } else {
+                        document.getElementById('addEmiInterestSection').style.display = 'block';
+                        document.getElementById('editEmiInterestSection').style.display = 'block';
+                    }
+                }
+
+                // Load EMIs with pagination
+                const res = await fetch(`/api/emis?loanId=${loanId}&limit=${limit}&page=${page}`);
+                const data = await res.json();
+                const emis = data.emis || [];
+                const tbody = document.getElementById('emisTableBody');
+
+                currentPage = data.currentPage || 1;
+                totalPages = data.totalPages || 1;
+
+                if (emis && emis.length > 0) {
+                    let html = '';
+                    emis.forEach(emi => {
+                        html += `<tr>
+                    <td data-label="Payment Date">${emi.paymentDate}</td>
+                    <td data-label="Principal Paid" class="fw-bold text-success">₹${(emi.emiAmount - (emi.interestAmount || 0)).toFixed(2)}</td>
+                    <td data-label="Interest Added" class="text-danger">₹${emi.interestAmount || 0}</td>
+                    <td data-label="Total EMI Paid" class="fw-bold text-primary">₹${emi.emiAmount}</td>
+                    <td data-label="Notes">${emi.notes || '-'}</td>
+                    <td data-label="Actions">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick='openEditModal(${JSON.stringify(emi).replace(/'/g, "&#39;")})'>Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteEMI(${emi.id})">Delete</button>
+                        </div>
+                    </td>
+                </tr>`;
+                    });
+                    tbody.innerHTML = html;
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No payments recorded</td></tr>';
+                }
+
+                updatePaginationControls();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function updatePaginationControls() {
+            const paginationContainer = document.getElementById('paginationControls');
+            paginationContainer.style.display = 'flex';
+            paginationContainer.style.setProperty('display', 'flex', 'important');
+
+            document.getElementById('pageInfo').innerText = `Page ${currentPage} of ${totalPages || 1}`;
+            document.getElementById('prevBtn').disabled = currentPage <= 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+        }
+
+        function changePage(direction) {
+            const newPage = currentPage + direction;
+            if (newPage >= 1 && newPage <= totalPages) {
+                loadData(newPage);
+            }
+        }
+
+        document.getElementById('addEmiForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const res = await fetch('/api/emis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addEmiModal'));
+                    modal.hide();
+                    e.target.reset();
+                    document.querySelector('input[name="paymentDate"]').valueAsDate = new Date();
+                    showToast('Payment recorded successfully', 'success');
+                    loadData(); // reload loan details and emi list
+                } else {
+                    const result = await res.json();
+                    let msg = result.error || 'Failed to add EMI payment';
+                    if (result.errors) msg = result.errors.map(err => Object.values(err)[0]).join(', ');
+                    showToast(msg, 'error');
+                }
+            } catch (err) {
+                showToast('Failed to add EMI payment due to a network error', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        async function deleteEMI(id) {
+            if (!confirm('Are you sure you want to delete this payment?')) return;
+            try {
+                const res = await fetch(`/api/emis/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('EMI deleted successfully', 'success');
+                    loadData();
+                } else {
+                    const result = await res.json();
+                    showToast(result.error || 'Failed to delete EMI', 'error');
+                }
+            } catch (err) {
+                showToast(err.message || 'Error deleting EMI', 'error');
+            }
+        }
+
+        function openEditModal(emi) {
+            document.getElementById('editEmiId').value = emi.id;
+            document.getElementById('editEmiDate').value = emi.paymentDate;
+            document.getElementById('editEmiAmount').value = emi.emiAmount;
+            document.getElementById('editEmiInterest').value = emi.interestAmount || 0;
+            document.getElementById('editEmiNotes').value = emi.notes || '';
+            const modal = new bootstrap.Modal(document.getElementById('editEmiModal'));
+            modal.show();
+        }
+
+        document.getElementById('editEmiForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            const id = data.id;
+
+            try {
+                const res = await fetch(`/api/emis/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editEmiModal'));
+                    modal.hide();
+                    showToast('EMI updated successfully', 'success');
+                    loadData();
+                } else {
+                    const result = await res.json();
+                    showToast(result.error || 'Failed to update EMI', 'error');
+                }
+            } catch (err) {
+                showToast('Network error updating EMI', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        loadData();
+    </script>
+    <%- include('partials/footer') %>

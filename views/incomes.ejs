@@ -1,0 +1,255 @@
+<%- include('partials/header') %>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Incomes</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addIncomeModal">
+            + Add Income
+        </button>
+    </div>
+
+    <!-- Add Income Modal -->
+    <div class="modal fade" id="addIncomeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Income</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addIncomeForm">
+                        <div class="mb-3">
+                            <label class="form-label">Title/Source</label>
+                            <input type="text" class="form-control" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Amount (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="amount" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" name="date" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Save Income</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Income Modal -->
+    <div class="modal fade" id="editIncomeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Income</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editIncomeForm">
+                        <input type="hidden" name="id" id="editIncomeId">
+                        <div class="mb-3">
+                            <label class="form-label">Title/Source</label>
+                            <input type="text" class="form-control" name="title" id="editIncomeTitle" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Amount (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="amount"
+                                id="editIncomeAmount" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" name="date" id="editIncomeDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" id="editIncomeNotes"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Update Income</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-4">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Source</th>
+                        <th>Amount</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="incomesTableBody">
+                    <tr>
+                        <td colspan="4" class="text-center">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3" id="paginationControls"
+            style="display: none !important;">
+            <button class="btn btn-sm btn-outline-secondary" id="prevBtn" onclick="changePage(-1)"
+                disabled>Previous</button>
+            <span class="text-muted small" id="pageInfo">Page 1</span>
+            <button class="btn btn-sm btn-outline-secondary" id="nextBtn" onclick="changePage(1)" disabled>Next</button>
+        </div>
+    </div>
+
+    <script>
+        document.querySelector('input[name="date"]').valueAsDate = new Date();
+
+        let currentPage = 1;
+        let totalPages = 1;
+        const limit = 10;
+
+        async function loadIncomes(page = 1) {
+            try {
+                const res = await fetch(`/api/incomes?limit=${limit}&page=${page}`);
+                const data = await res.json();
+                const tbody = document.getElementById('incomesTableBody');
+
+                currentPage = data.currentPage || 1;
+                totalPages = data.totalPages || 1;
+
+                if (data.incomes && data.incomes.length > 0) {
+                    let html = '';
+                    data.incomes.forEach(e => {
+                        html += `<tr>
+                    <td data-label="Date">${e.date}</td>
+                    <td data-label="Source">${e.title}</td>
+                    <td data-label="Amount" class="fw-bold text-success">+ ₹${e.amount}</td>
+                    <td data-label="Actions">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick='openEditModal(${JSON.stringify(e).replace(/'/g, "&#39;")})'>Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteIncome(${e.id})">Delete</button>
+                        </div>
+                    </td>
+                </tr>`;
+                    });
+                    tbody.innerHTML = html;
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No incomes found</td></tr>';
+                }
+
+                updatePaginationControls();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function updatePaginationControls() {
+            const paginationContainer = document.getElementById('paginationControls');
+            paginationContainer.style.display = 'flex';
+            paginationContainer.style.setProperty('display', 'flex', 'important');
+
+            document.getElementById('pageInfo').innerText = `Page ${currentPage} of ${totalPages || 1}`;
+            document.getElementById('prevBtn').disabled = currentPage <= 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+        }
+
+        function changePage(direction) {
+            const newPage = currentPage + direction;
+            if (newPage >= 1 && newPage <= totalPages) {
+                loadIncomes(newPage);
+            }
+        }
+
+        document.getElementById('addIncomeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const res = await fetch('/api/incomes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addIncomeModal'));
+                    modal.hide();
+                    e.target.reset();
+                    document.querySelector('input[name="date"]').valueAsDate = new Date();
+                    showToast('Income added successfully', 'success');
+                    loadIncomes();
+                } else {
+                    const result = await res.json();
+                    let msg = result.error || 'Failed to add income';
+                    if (result.errors) msg = result.errors.map(err => Object.values(err)[0]).join(', ');
+                    showToast(msg, 'error');
+                }
+            } catch (err) {
+                showToast('Failed to add income due to a network error', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        async function deleteIncome(id) {
+            if (!confirm('Are you sure you want to delete this income?')) return;
+            try {
+                const res = await fetch(`/api/incomes/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('Income deleted', 'success');
+                    loadIncomes();
+                } else {
+                    const result = await res.json();
+                    showToast(result.error || 'Failed to delete income', 'error');
+                }
+            } catch (err) {
+                showToast(err.message || 'Error deleting income', 'error');
+            }
+        }
+
+        function openEditModal(income) {
+            document.getElementById('editIncomeId').value = income.id;
+            document.getElementById('editIncomeTitle').value = income.title;
+            document.getElementById('editIncomeAmount').value = income.amount;
+            document.getElementById('editIncomeDate').value = income.date;
+            document.getElementById('editIncomeNotes').value = income.notes || '';
+            const modal = new bootstrap.Modal(document.getElementById('editIncomeModal'));
+            modal.show();
+        }
+
+        document.getElementById('editIncomeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            const id = data.id;
+
+            try {
+                const res = await fetch(`/api/incomes/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editIncomeModal'));
+                    modal.hide();
+                    showToast('Income updated successfully', 'success');
+                    loadIncomes();
+                } else {
+                    const result = await res.json();
+                    showToast(result.error || 'Failed to update income', 'error');
+                }
+            } catch (err) {
+                showToast('Network error updating income', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        loadIncomes();
+    </script>
+    <%- include('partials/footer') %>

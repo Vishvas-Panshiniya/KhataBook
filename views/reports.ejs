@@ -1,0 +1,94 @@
+<%- include('partials/header') %>
+    <h2 class="mb-4">Reports</h2>
+
+    <div class="row g-4 mb-4">
+        <!-- Expense Report Card -->
+        <div class="col-md-6">
+            <div class="card p-4 h-100">
+                <h4 class="mb-3">Expense Report</h4>
+                <p class="text-muted">Download all your daily expense records. Optionally filter by a date range.</p>
+
+                <form id="expenseReportForm" class="mb-4">
+                    <div class="row g-2 align-items-center mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label mb-0 small">Start Date</label>
+                            <input type="date" class="form-control form-control-sm" name="startDate" id="expStartDate">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label mb-0 small">End Date</label>
+                            <input type="date" class="form-control form-control-sm" name="endDate" id="expEndDate">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary w-50"
+                            onclick="downloadExpense('csv')">CSV</button>
+                        <button type="button" class="btn btn-outline-danger w-50"
+                            onclick="downloadExpense('pdf')">PDF</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Loan Report Card -->
+        <div class="col-md-6">
+            <div class="card p-4 h-100">
+                <h4 class="mb-3">Loan Report</h4>
+                <p class="text-muted">Download all loans and EMI details. Select a specific loan or download all.</p>
+
+                <form id="loanReportForm" class="mb-4">
+                    <div class="mb-3">
+                        <label class="form-label mb-0 small">Select Loan (Optional)</label>
+                        <select class="form-select form-select-sm" name="loanId" id="loanSelect">
+                            <option value="">All Loans</option>
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2 mt-auto">
+                        <button type="button" class="btn btn-outline-primary w-50"
+                            onclick="downloadLoan('csv')">CSV</button>
+                        <button type="button" class="btn btn-outline-danger w-50"
+                            onclick="downloadLoan('pdf')">PDF</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadOptions() {
+            try {
+                const res = await fetch('/api/loans?limit=100');
+                const data = await res.json();
+                const loanSelect = document.getElementById('loanSelect');
+                if (data.loans && data.loans.length > 0) {
+                    data.loans.forEach(loan => {
+                        const opt = document.createElement('option');
+                        opt.value = loan.id;
+                        opt.textContent = `${loan.loanName} (${loan.status})`;
+                        loanSelect.appendChild(opt);
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to load loans for select option');
+            }
+        }
+
+        function downloadExpense(type) {
+            const start = document.getElementById('expStartDate').value;
+            const end = document.getElementById('expEndDate').value;
+            let url = `/api/reports/expense/${type}?`;
+            if (start) url += `startDate=${start}&`;
+            if (end) url += `endDate=${end}`;
+            window.open(url, '_blank');
+        }
+
+        function downloadLoan(type) {
+            const loanId = document.getElementById('loanSelect').value;
+            let url = `/api/reports/loan/${type}?`;
+            if (loanId) url += `loanId=${loanId}`;
+            window.open(url, '_blank');
+        }
+
+        // Initialize Options
+        loadOptions();
+    </script>
+    <%- include('partials/footer') %>

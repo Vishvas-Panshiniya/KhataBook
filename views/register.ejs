@@ -1,0 +1,54 @@
+<%- include('partials/header') %>
+    <div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+        <div class="col-md-5">
+            <div class="card p-4">
+                <h3 class="text-center mb-4">Create an Account</h3>
+                <form id="registerForm">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email address</label>
+                        <input type="email" class="form-control" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" name="password" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Register</button>
+                </form>
+                <p class="text-center mt-3">Already have an account? <a href="/login">Login here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    showToast('Registration successful! Please login.', 'success');
+                    setTimeout(() => window.location.href = '/login', 1500);
+                } else {
+                    let msg = result.error || 'Registration failed';
+                    if (result.errors) {
+                        msg = result.errors.map(err => Object.values(err)[0]).join(', ');
+                    }
+                    showToast(msg, 'error');
+                }
+            } catch (err) {
+                showToast('Something went wrong', 'error');
+            }
+        });
+    </script>
+    <%- include('partials/footer') %>

@@ -1,0 +1,104 @@
+<%- include('partials/header') %>
+    <h2 class="mb-4">Dashboard</h2>
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card bg-info text-white p-4 h-100">
+                <h5>Remaining Money</h5>
+                <h2 id="remainingMoney">₹0.00</h2>
+                <a href="/incomes" class="text-white mt-auto text-decoration-none">Add Income &rarr;</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-primary text-white p-4 h-100">
+                <h5>Total Expenses</h5>
+                <h2 id="totalExpenses">₹0.00</h2>
+                <a href="/expenses" class="text-white mt-auto text-decoration-none">View Expenses &rarr;</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white p-4 h-100">
+                <h5>Active Loans</h5>
+                <h2 id="activeLoansCount">0</h2>
+                <a href="/loans" class="text-white mt-auto text-decoration-none">Manage Loans &rarr;</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-4">
+                <h4 class="mb-3">Recent Expenses</h4>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Title</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentExpensesTable">
+                            <tr>
+                                <td colspan="3" class="text-center">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadDashboard() {
+            try {
+                // Load Expense total
+                const expSumRes = await fetch('/api/expenses/summary');
+                const expSumData = await expSumRes.json();
+                const tExpense = parseFloat(expSumData.totalExpense || 0);
+                document.getElementById('totalExpenses').innerText = `₹${tExpense.toFixed(2)}`;
+
+                // Load Income total
+                const incSumRes = await fetch('/api/incomes/summary');
+                const incSumData = await incSumRes.json();
+                const tIncome = parseFloat(incSumData.totalIncome || 0);
+
+                // Calculate Remaining Money
+                const remaining = tIncome - tExpense;
+                document.getElementById('remainingMoney').innerText = `₹${remaining.toFixed(2)}`;
+
+                // Load Recent Expenses (limit 5)
+                const expListRes = await fetch('/api/expenses?limit=5');
+                const expListData = await expListRes.json();
+
+                let expHtml = '';
+                if (expListData.expenses && expListData.expenses.length > 0) {
+                    expListData.expenses.forEach(e => {
+                        expHtml += `<tr>
+                    <td>${e.date}</td>
+                    <td>${e.title}</td>
+                    <td>₹${e.amount}</td>
+                </tr>`;
+                    });
+                } else {
+                    expHtml = '<tr><td colspan="3" class="text-center text-muted">No recent expenses</td></tr>';
+                }
+                document.getElementById('recentExpensesTable').innerHTML = expHtml;
+
+                // Load Loans for active count
+                const loansRes = await fetch('/api/loans?limit=100');
+                const loansData = await loansRes.json();
+
+                let activeCount = 0;
+                if (loansData.loans) {
+                    activeCount = loansData.loans.filter(l => l.status === 'active').length;
+                }
+                document.getElementById('activeLoansCount').innerText = activeCount;
+
+            } catch (err) {
+                console.error('Error loading dashboard', err);
+                showToast('Failed to load dashboard data', 'error');
+            }
+        }
+        loadDashboard();
+    </script>
+    <%- include('partials/footer') %>
