@@ -1,4 +1,4 @@
-import { ENV_CONFIG } from "@config/envConfig";
+const { ENV_CONFIG } = require('./envConfig');
 
 const config = {
   development: {
@@ -24,4 +24,4 @@ const config = {
   },
 };
 
-export default config;
+module.exports = config;

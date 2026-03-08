@@ -1,8 +1,6 @@
-import dotenv from "dotenv";
+require("dotenv").config();
 
-dotenv.config();
-
-export const ENV_CONFIG = {
+const ENV_CONFIG = {
   NODE_ENV: process.env.NODE_ENV || "development",
   PORT: Number(process.env.PORT) || 3000,
   DATABASE_CONFIG: {
@@ -12,6 +10,8 @@ export const ENV_CONFIG = {
     PASSWORD: process.env.DB_PASSWORD || "",
     DB_NAME: process.env.DB_NAME || "",
   },
-  JWT_SECRET: process.env.JWT_SECRET || 'jwt_secret',
-  SESSION_SECRET: process.env.SESSION_SECRET || 'session_secret'
+  JWT_SECRET: process.env.JWT_SECRET || "jwt_secret",
+  SESSION_SECRET: process.env.SESSION_SECRET || "session_secret",
 };
+
+module.exports = { ENV_CONFIG };
