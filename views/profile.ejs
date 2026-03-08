@@ -1,0 +1,83 @@
+<%- include('partials/header') %>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card p-4 mb-4">
+                <h3 class="mb-4">Update Profile</h3>
+                <form id="profileForm">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" name="name" value="<%= user.name %>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email address</label>
+                        <input type="email" class="form-control" name="email" value="<%= user.email %>" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Update Profile</button>
+                </form>
+            </div>
+
+            <div class="card p-4">
+                <h3 class="mb-4">Change Password</h3>
+                <form id="passwordForm">
+                    <div class="mb-3">
+                        <label class="form-label">Old Password</label>
+                        <input type="password" class="form-control" name="oldPassword" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">New Password</label>
+                        <input type="password" class="form-control" name="newPassword" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100">Change Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const res = await fetch('/api/auth/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    showToast(result.message, 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showToast(result.error || 'Update failed', 'error');
+                }
+            } catch (err) {
+                showToast('Something went wrong', 'error');
+            }
+        });
+
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const res = await fetch('/api/auth/password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    showToast(result.message, 'success');
+                    e.target.reset();
+                } else {
+                    showToast(result.error || 'Password change failed', 'error');
+                }
+            } catch (err) {
+                showToast('Something went wrong', 'error');
+            }
+        });
+    </script>
+    <%- include('partials/footer') %>

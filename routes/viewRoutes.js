@@ -14,6 +14,11 @@ router.get('/login', optionalAuth, (req, res) => {
     res.render('login', { user: null });
 });
 
+router.get('/forgot-password', optionalAuth, (req, res) => {
+    if (req.user) return res.redirect('/dashboard');
+    res.render('forgot-password', { user: null });
+});
+
 router.get('/register', optionalAuth, (req, res) => {
     if (req.user) return res.redirect('/dashboard');
     res.render('register', { user: null });
@@ -21,6 +26,10 @@ router.get('/register', optionalAuth, (req, res) => {
 
 router.get('/dashboard', authMiddleware, (req, res) => {
     res.render('dashboard', { user: req.user });
+});
+
+router.get('/profile', authMiddleware, (req, res) => {
+    res.render('profile', { user: req.user });
 });
 
 router.get('/incomes', authMiddleware, (req, res) => {

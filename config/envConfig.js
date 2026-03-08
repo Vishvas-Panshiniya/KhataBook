@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 const ENV_CONFIG = {
-  NODE_ENV: process.env.NODE_ENV || "development",
+  NODE_ENV: process.env.NODE_ENV || "local",
   PORT: Number(process.env.PORT) || 3000,
   DATABASE_CONFIG: {
     HOST: process.env.DB_HOST || "localhost",

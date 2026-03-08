@@ -28,7 +28,21 @@ router.post('/auth/login', [
 
 router.post('/auth/logout', authController.logout);
 
-// --- Expense Routes ---
+// --- Profile & Password Routes ---
+router.post('/auth/forgot-password', [
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+], validate, authController.resetPasswordSimple);
+
+router.put('/auth/profile', authMiddleware, [
+    body('name').notEmpty().withMessage('Name is required'),
+    body('email').isEmail().withMessage('Valid email is required')
+], validate, authController.updateProfile);
+
+router.put('/auth/password', authMiddleware, [
+    body('oldPassword').notEmpty().withMessage('Old password is required'),
+    body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
+], validate, authController.changePassword);// --- Expense Routes ---
 router.use('/expenses', authMiddleware);
 router.post('/expenses', [
     body('title').notEmpty().withMessage('Title is required'),
