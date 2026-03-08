@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { ENV_CONFIG } = require('../config/envConfig');
 require('dotenv').config();
 
 const authMiddleware = (req, res, next) => {
@@ -18,7 +19,7 @@ const authMiddleware = (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, ENV_CONFIG.JWT_SECRET);
         req.user = decoded; // { id, name, email }
         next();
     } catch (error) {
@@ -34,7 +35,7 @@ const optionalAuth = (req, res, next) => {
     let token = req.cookies?.token;
     if (token) {
         try {
-            req.user = jwt.verify(token, process.env.JWT_SECRET);
+            req.user = jwt.verify(token, ENV_CONFIG.JWT_SECRET);
         } catch (error) {
             // invalid token, just ignore
         }

@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
+const { ENV_CONFIG } = require('../config/envConfig');
 
 exports.register = async (req, res, next) => {
     try {
@@ -51,7 +52,7 @@ exports.login = async (req, res, next) => {
             email: user.email
         };
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign(payload, ENV_CONFIG.JWT_SECRET, { expiresIn: '1d' });
 
         // Set cookie
         res.cookie('token', token, {
