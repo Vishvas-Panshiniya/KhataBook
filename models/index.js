@@ -10,10 +10,14 @@ const config = require(__dirname + '/../config/config.js')[env];
 const db = {};
 
 let sequelize;
-if (config.use_env_variable) {
+if (config.use_env_variable && process.env[config.use_env_variable]) {
   sequelize = new Sequelize(process.env[config.use_env_variable], config);
 } else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
+  sequelize = new Sequelize(config.database || process.env.DB_NAME, config.username || process.env.DB_USER, config.password || process.env.DB_PASSWORD, {
+    ...config,
+    host: config.host || process.env.DB_HOST,
+    port: config.port || process.env.DB_PORT || 5432,
+  });
 }
 
 fs
