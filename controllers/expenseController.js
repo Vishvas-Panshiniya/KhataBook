@@ -1,5 +1,4 @@
 const { Expense } = require('../models');
-const { Op } = require('sequelize');
 
 exports.addExpense = async (req, res, next) => {
     try {

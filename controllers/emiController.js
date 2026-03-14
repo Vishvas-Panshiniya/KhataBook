@@ -1,5 +1,4 @@
-const { EMI, Loan } = require('../models');
-const sequelize = require('../config/database');
+const { EMI, Loan, sequelize } = require('../models');
 
 exports.addEMI = async (req, res, next) => {
     const transaction = await sequelize.transaction();
